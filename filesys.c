@@ -29,6 +29,16 @@ void get_sha1_hash (const void *buf, int len, const void *sha1)
 int s_open (const char *pathname, int flags, mode_t mode)
 {
 	assert (filesys_inited);
+	/*
+	If the file exists and secure.txt is there; then check for consistency
+	If tampered, then return -1 
+	otrunk -> truncate the file, make file size 0 (something like that)
+	if not tampered..., then you are going to make the merkle
+	if file size is 0, then consider the hash to be 0.
+
+	if truncate flag is not given, then open call will not change the file
+	so would not need to do anything with merkle, in that case
+	*/
 	return open (pathname, flags, mode);
 }
 
@@ -78,6 +88,7 @@ int s_close (int fd)
  */
 int filesys_init (void)
 {
+	//if file does not exist, just throw away secure.txt, if it exists
 	filesys_inited = 1;
 	return 0;
 }
