@@ -39,6 +39,14 @@ int s_open (const char *pathname, int flags, mode_t mode)
 	if truncate flag is not given, then open call will not change the file
 	so would not need to do anything with merkle, in that case
 	*/
+
+	//Step 1: Build in-memory merkle tree
+
+	//Step 2: Compare Root Hash (if fail return -1)
+	
+	//Step 3: if file DNE, create entry in secure.txt
+	
+	//Step 4: Handle Truncating
 	return open (pathname, flags, mode);
 }
 
@@ -56,6 +64,7 @@ int s_lseek (int fd, long offset, int whence)
  * modify the blocks
  * update the in-memory Merkle tree and root in secure.txt
  * returns -1 on failing the integrity check.
+ * Finally, write modified blocks of the file
  */
 
 ssize_t s_write (int fd, const void *buf, size_t count)
@@ -70,6 +79,13 @@ ssize_t s_write (int fd, const void *buf, size_t count)
  */
 ssize_t s_read (int fd, void *buf, size_t count)
 {
+	//Step 1: Compute the BLOCKS of the file that need to be read
+
+	//Step 2: Read the blocks
+
+	//Step 3: Check Integrity (if fail return -1)
+
+
 	assert (filesys_inited);
 	return read (fd, buf, count);
 }
@@ -88,7 +104,14 @@ int s_close (int fd)
  */
 int filesys_init (void)
 {
-	//if file does not exist, just throw away secure.txt, if it exists
+	//if secure.txt does not exist, CREATE
+
+	// Check the integrity of all the files whos hashes exist in secure.txt
+
+	// if a file DNE, just throw away corresponding entry in secure.txt, (if entry exists)
+
+	// if Integrity of an existing file is compromised, return 1
+
 	filesys_inited = 1;
-	return 0;
+	return 0; //on success
 }
