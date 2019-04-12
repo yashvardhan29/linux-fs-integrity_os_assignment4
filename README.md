@@ -10,4 +10,8 @@
 1. `brew install openssl`
 2. `cd /usr/local/include `
 3. `ln -s ../opt/openssl/include/openssl .`
-[Ref](https://github.com/mongodb/mongo-php-driver/issues/523)
+4. `export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/opt/openssl/lib/`
+Refer: [1](https://github.com/mongodb/mongo-php-driver/issues/523), [2](https://github.com/brianmario/mysql2/issues/795#issuecomment-337006164)
+
+## Run
+> `make && make run`
