@@ -14,7 +14,7 @@ struct merkleNode{
 	struct merkleNode *rightChild;
 };
 
-// static struct merkleNode root;
+static struct merkleNode root;
 static int filesys_inited = 0;
 
 /* returns 20 bytes unique hash of the buffer (buf) of length (len)
@@ -25,9 +25,9 @@ void get_sha1_hash (const void *buf, int len, const void *sha1)
 	SHA1 ((unsigned char*)buf, len, (unsigned char*)sha1);
 }
 
-// struct merkleNode* createMerkleTree(){
+struct merkleNode* createMerkleTree(){
 
-// }
+}
 
 /* Build an in-memory Merkle tree for the file.
  * Compare the integrity of file with respect to
@@ -52,9 +52,9 @@ int s_open (const char *pathname, int flags, mode_t mode)
 	*/
 
 	//Step 1: Build in-memory merkle tree
-	// if(file exists){
+	if(file exists){
 
-	// }
+	}
 
 	//Step 2: Compare Root Hash (if fail return -1)
 	
@@ -120,6 +120,8 @@ int s_close (int fd)
 int filesys_init (void)
 {
 	//if secure.txt does not exist, CREATE
+	int fd = open("secure.txt", O_CREAT|O_WRONLY, S_IRUSR|S_IWUSR);
+	assert(fd != -1);
 
 	// Check the integrity of all the files whos hashes exist in secure.txt
 
