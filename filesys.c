@@ -8,6 +8,13 @@
 #include <string.h>
 #include <assert.h>
 
+struct merkleNode{
+	char hash[21];
+	struct merkleNode *leftChild;
+	struct merkleNode *rightChild;
+};
+
+static merkleNode root;
 static int filesys_inited = 0;
 
 /* returns 20 bytes unique hash of the buffer (buf) of length (len)
@@ -16,6 +23,10 @@ static int filesys_inited = 0;
 void get_sha1_hash (const void *buf, int len, const void *sha1)
 {
 	SHA1 ((unsigned char*)buf, len, (unsigned char*)sha1);
+}
+
+struct merkleNode* createMerkleTree(){
+
 }
 
 /* Build an in-memory Merkle tree for the file.
@@ -41,12 +52,16 @@ int s_open (const char *pathname, int flags, mode_t mode)
 	*/
 
 	//Step 1: Build in-memory merkle tree
+	if(file exists){
+
+	}
 
 	//Step 2: Compare Root Hash (if fail return -1)
 	
 	//Step 3: if file DNE, create entry in secure.txt
 	
 	//Step 4: Handle Truncating
+
 	return open (pathname, flags, mode);
 }
 
