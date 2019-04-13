@@ -60,13 +60,16 @@ struct merkleNode* createMerkleTree(int fd){
 
 		// if there was a node left, pull it in the level up
 		if(levelCount%2){
-			parentLevel[pCount] = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
-			for(int i=0; i<20; i++) parentLevel[pCount]->hash[i] = level[pCount*2]->hash[i];
+			level[pCount] = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
+			for(int i=0; i<20; i++) level[pCount]->hash[i] = level[pCount*2]->hash[i];
+			level[pCount*2]->leftChild = NULL;
+			level[pCount*2]->rightChild = NULL;
+
 			pCount++;
 		}
 		levelCount = pCount;
 	}
-	root = level[0];
+	return level[0];
 }
 
 /* Build an in-memory Merkle tree for the file.
@@ -145,10 +148,19 @@ ssize_t s_read (int fd, void *buf, size_t count)
 	return read (fd, buf, count);
 }
 
+void destroyTree(struct merkleNode* x){
+	if(x == NULL)
+		return;
+	destroyTree(x->leftChild);
+	destroyTree(x->rightChild);
+	free(x);
+}
+
 /* destroy the in-memory Merkle tree */
 int s_close (int fd)
 {
 	assert (filesys_inited);
+	destroyTree(root);
 	return close (fd);
 }
 
