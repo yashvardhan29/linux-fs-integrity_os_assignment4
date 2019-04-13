@@ -9,12 +9,12 @@
 #include <assert.h>
 
 struct merkleNode{
-	char hash[21];
+	char hash[20];
 	struct merkleNode *leftChild;
 	struct merkleNode *rightChild;
 };
 
-static struct merkleNode root;
+static struct merkleNode* root;
 static int filesys_inited = 0;
 
 /* returns 20 bytes unique hash of the buffer (buf) of length (len)
@@ -25,8 +25,48 @@ void get_sha1_hash (const void *buf, int len, const void *sha1)
 	SHA1 ((unsigned char*)buf, len, (unsigned char*)sha1);
 }
 
-struct merkleNode* createMerkleTree(){
+struct merkleNode* createMerkleTree(int fd){
+	char blk[64];
+	memset (blk, 0, 64);
+	
+	struct merkleNode* level[1024*1024];//4 MB
+	int levelCount = 0;
 
+	//Creating all the leaf nodes
+	while(read (fd, blk, 64)){
+		assert(levelCount<1024*1024);
+
+		level[levelCount++] = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
+		get_sha1_hash(blk, 64, level[levelCount++]->hash);
+
+		memset (blk, 0, 64);
+	}
+
+	while(levelCount!=1){
+		int pCount;
+		for(pCount = 0; pCount < levelCount/2; pCount++){
+			
+			char blk[40];
+			for(int i=0; i<20; i++) blk[i] = level[pCount*2]->hash[i];
+			for(int i=0; i<20; i++) blk[20+i] = level[pCount*2+1]->hash[i];
+
+			struct *merkleNode node = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
+			get_sha1_hash(blk, 64, node->hash);
+			node->leftChild = level[pCount*2];
+			node->rightChild = level[pCount*2+1];
+			
+			level[pCount] = node;
+		}
+
+		// if there was a node left, pull it in the level up
+		if(levelCount%2){
+			parentLevel[pCount] = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
+			for(int i=0; i<20; i++) parentLevel[pCount]->hash[i] = level[pCount*2]->hash[i];
+			pCount++;
+		}
+		levelCount = pCount;
+	}
+	root = level[0];
 }
 
 /* Build an in-memory Merkle tree for the file.
