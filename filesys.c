@@ -50,7 +50,7 @@ struct merkleNode* createMerkleTree(int fd){
 			for(int i=0; i<20; i++) blk[i] = level[pCount*2]->hash[i];
 			for(int i=0; i<20; i++) blk[20+i] = level[pCount*2+1]->hash[i];
 
-			struct *merkleNode node = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
+			struct merkleNode *node = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
 			get_sha1_hash(blk, 64, node->hash);
 			node->leftChild = level[pCount*2];
 			node->rightChild = level[pCount*2+1];
@@ -83,9 +83,16 @@ struct merkleNode* createMerkleTree(int fd){
 int s_open (const char *pathname, int flags, mode_t mode)
 {
 	assert (filesys_inited);
+	int fd; //file descriptor for file
+	int fd1; //file descriptor for secure.txt
+	char buffer[52];
+	struct merkleNode *root;
+	fd=open(pathname,flags,mode);
+
 	/*
 	If the file exists and secure.txt is there; then check for consistency
 	If tampered, then return -1 
+
 	otrunk -> truncate the file, make file size 0 (something like that)
 	if not tampered..., then you are going to make the merkle
 	if file size is 0, then consider the hash to be 0.
@@ -95,10 +102,29 @@ int s_open (const char *pathname, int flags, mode_t mode)
 	*/
 
 	//Step 1: Build in-memory merkle tree
-	if(file exists){
-
-	}
-
+	if( access( pathname, F_OK ) != -1 ) {
+		root=createMerkleTree(fd);
+		fd1=open("secure.txt",O_RDWR, S_IRUSR|S_IWUSR);
+		while((n = read(fd1, buffer, sizeof(buffer))) > 0){
+			char filename[32];
+        	char hash[20];
+        	int i,j;
+        	for(i=0;i<32;i++){
+        		filename[i]=buffer[i];
+        	}
+        	filename[i] = '\0';
+        	for(j=0;j<20;j++){
+        		hash[j]=buffer[j+32];
+        	}
+        	hash[20] = '\0';
+        	if(strcmp(filename,pathname)==0){
+        		
+        	}
+		}
+    } 
+    else {
+    	// file doesn't exist
+    }
 	//Step 2: Compare Root Hash (if fail return -1)
 	
 	//Step 3: if file DNE, create entry in secure.txt
