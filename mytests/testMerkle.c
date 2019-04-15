@@ -29,10 +29,15 @@ struct merkleNode* createMerkleTree(int fd){
 	char blk[64];
 	memset (blk, 0, 64);
 	
-	struct merkleNode* level[1024*1024];//4 MB
+	//Earlier we had 1024*1024 = 4 MB, but that can lead to 
+	// a segfault, because there might not be enough space
+	// on the stack. Hence, we will reduce the pointers, 
+	// as in our case, we generally dont need files above
+	// the size of 128 KB
+	struct merkleNode* level[3000];
 	int levelCount = 0;
 
-	//Creating all the leaf nodes
+	// Creating all the leaf nodes
 	while(read (fd, blk, 64) > 0){
 		assert(levelCount<1024*1024);
 
@@ -41,6 +46,8 @@ struct merkleNode* createMerkleTree(int fd){
 
 		memset (blk, 0, 64);
 	}
+	for(int i=0; i<levelCount; i++)
+		printf("%d: %s\n", i, level[i]->hash);
 
 	while(levelCount>1){
 		int pCount;
@@ -70,14 +77,21 @@ struct merkleNode* createMerkleTree(int fd){
 			pCount++;
 		}
 		levelCount = pCount;
+		printf("levelCount at end of iteration: %d\n", levelCount);
 	}
 	return level[0];
+}
+
+void merkleTreeTraverse(int fd){
+	struct merkleNode* rootNode = root[fd];
+	printf("%s\n", rootNode->hash);
 }
 
 int main(){
 	int fd = open ("merkleTest.txt", O_RDONLY, 0);
 	printf("Got FD: %d\n", fd);
-    createMerkleTree(fd);
+    root[fd] = createMerkleTree(fd);
+    merkleTreeTraverse(fd);
 
 	return 0;
 }
