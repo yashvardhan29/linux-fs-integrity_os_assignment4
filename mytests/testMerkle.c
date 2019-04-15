@@ -18,11 +18,9 @@ static struct merkleNode* root[100]; //assuming fd lies in [0,99]
 static char* fnames[100];
 static int filesys_inited = 0;
 
-void get_sha1_hash (char *buf, int len, char *sha1)
+void get_sha1_hash (const void *buf, int len, const void *sha1)
 {
-	assert(len>=20);
-	for(int i=0; i<20; i++)
-		sha1[i] = buf[i];
+	SHA1 ((unsigned char*)buf, len, (unsigned char*)sha1);
 }
 
 struct merkleNode* createMerkleTree(int fd){
@@ -84,7 +82,10 @@ struct merkleNode* createMerkleTree(int fd){
 
 void merkleTreeTraverse(int fd){
 	struct merkleNode* rootNode = root[fd];
-	printf("%s\n", rootNode->hash);
+	printf("%x\n", rootNode->hash);
+	for(int i=0; i<20; i++)
+		printf("%d", rootNode->hash[i]);
+	printf("\n");
 }
 
 int main(){
