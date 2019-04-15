@@ -38,3 +38,5 @@ Refer: [1](https://github.com/mongodb/mongo-php-driver/issues/523), [2](https://
 4. <https://en.wikipedia.org/wiki/Merkle_tree>
 5. [snprintf](https://www.geeksforgeeks.org/snprintf-c-library/), [sprintf](https://www.geeksforgeeks.org/sprintf-in-c/)
 6. [**File Positioning**](https://www.gnu.org/software/libc/manual/html_node/File-Positioning.html)
+7. <https://www.systutorials.com/docs/linux/man/2-lseek/>
+8. <https://stackoverflow.com/a/3399372/2806163>

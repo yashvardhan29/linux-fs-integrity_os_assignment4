@@ -22,6 +22,8 @@ void get_sha1_hash (const void *buf, int len, const void *sha1)
 }
 
 struct merkleNode* createMerkleTree(int fd){
+	fd = open ("merkleTest.txt", O_RDONLY, 0);
+
 	char blk[64];
 	memset (blk, 0, 64);
 
@@ -98,7 +100,8 @@ void merkleTreeTraverse(int fd){
 
 int main(){
 	int fd = open ("merkleTest.txt", O_CREAT|O_WRONLY, S_IRUSR|S_IWUSR);
-	fd = open ("merkleTest.txt", O_RDONLY, 0);
+	// fd = open ("merkleTest.txt", O_RDONLY, 0);
+	// fcntl (fd, F_SETFD, O_RDONLY);
 	printf("Got FD: %d\n", fd);
     root[fd] = createMerkleTree(fd);
     merkleTreeTraverse(fd);
