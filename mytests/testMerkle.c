@@ -15,8 +15,6 @@ struct merkleNode{
 };
 
 static struct merkleNode* root[100]; //assuming fd lies in [0,99]
-static char* fnames[100];
-static int filesys_inited = 0;
 
 void get_sha1_hash (const void *buf, int len, const void *sha1)
 {
@@ -26,6 +24,16 @@ void get_sha1_hash (const void *buf, int len, const void *sha1)
 struct merkleNode* createMerkleTree(int fd){
 	char blk[64];
 	memset (blk, 0, 64);
+
+	int numCan = read (fd, blk, 64);
+	printf("Able to read %d bytes (max 64)\n", numCan);
+	assert (numCan >=0 );
+	if(numCan == 0){
+		struct merkleNode* ret = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
+		memset (ret->hash, 0, 64);
+		return ret;
+	}
+	lseek(fd, 0, SEEK_SET);
 	
 	//Earlier we had 1024*1024 = 4 MB, but that can lead to 
 	// a segfault, because there might not be enough space
@@ -37,7 +45,7 @@ struct merkleNode* createMerkleTree(int fd){
 
 	// Creating all the leaf nodes
 	while(read (fd, blk, 64) > 0){
-		assert(levelCount<1024*1024);
+		assert(levelCount<3000);
 
 		level[levelCount] = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
 		get_sha1_hash(blk, 64, level[levelCount++]->hash);
@@ -89,7 +97,8 @@ void merkleTreeTraverse(int fd){
 }
 
 int main(){
-	int fd = open ("merkleTest.txt", O_RDONLY, 0);
+	int fd = open ("merkleTest.txt", O_CREAT|O_WRONLY, S_IRUSR|S_IWUSR);
+	fd = open ("merkleTest.txt", O_RDONLY, 0);
 	printf("Got FD: %d\n", fd);
     root[fd] = createMerkleTree(fd);
     merkleTreeTraverse(fd);
