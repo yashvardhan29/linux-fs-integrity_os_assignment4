@@ -40,6 +40,8 @@ struct merkleNode* createMerkleTree(int fd){
 	if(numCan == 0){
 		struct merkleNode* ret = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
 		memset (ret->hash, 0, 64);
+		ret -> leftChild = NULL;
+		ret -> rightChild = NULL;
 		return ret;
 	}
 	lseek(fd, 0, SEEK_SET);
@@ -53,6 +55,8 @@ struct merkleNode* createMerkleTree(int fd){
 		assert(levelCount<3000);
 
 		level[levelCount] = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
+		level[levelCount] -> leftChild = NULL;
+		level[levelCount] -> rightChild = NULL;
 		get_sha1_hash(blk, 64, level[levelCount++]->hash);
 
 		memset (blk, 0, 64);
@@ -128,15 +132,7 @@ int updateSecure(int fd){
 		for(int j = 0; j < 20; j++) hash[j] = secureBlock[j+32];
 
 		if( !strcmp(filename,fName) ){
-			int x = lseek(secureFD, -20, SEEK_CUR);
-
-			printf("ENTERING THE CHECK WAALA CODE!\n");
-			//delete this chunk if it does not give an error
-			char temp[20];
-			read(secureFD, temp, sizeof(temp));
-			assert(hashSame(temp,hash));
-			int y = lseek(secureFD, -20, SEEK_CUR);
-			assert(x==y);
+			lseek(secureFD, -20, SEEK_CUR);
 
 			//Update the root hash in secure.txt
 			write(secureFD, updatedHash, 20);
@@ -144,6 +140,27 @@ int updateSecure(int fd){
 		}
 	}
 	return 0;
+}
+
+char* checkSecure(int fd){
+	char* fName = fnames[fd];
+	int secureFD = open("secure.txt", O_RDWR, S_IRUSR|S_IWUSR);
+	int n;
+	char secureBlock[52]; // 32 for fileName + 20 for Root Hash
+	char *hash = (char*)malloc(20);
+
+	while((n = read(secureFD, secureBlock, sizeof(secureBlock))) > 0){
+		assert(n == 52);
+		
+		char filename[32];
+		
+		for(int i = 0; i < 32; i++) filename[i] = secureBlock[i];
+		for(int j = 0; j < 20; j++) hash[j] = secureBlock[j+32];
+
+		if( !strcmp(filename,fName) )
+			return hash;
+	}
+	return NULL;
 }
 
 /* Build an in-memory Merkle tree for the file.
@@ -214,15 +231,7 @@ int s_open (const char *pathname, int flags, mode_t mode)
 					}
 					return fd1;
 				} else{
-					int x = lseek(fd2, -20, SEEK_CUR);
-
-					printf("ENTERING THE CHECK WAALA CODE!\n");
-					//delete this chunk if it does not give an error
-					char temp[20];
-					read(fd2, temp, sizeof(temp));
-					assert(hashSame(temp,hash));
-					int y = lseek(fd2, -20, SEEK_CUR);
-					assert(x==y);
+					lseek(fd2, -20, SEEK_CUR);
 
 					//Update the root hash in secure.txt
 					write(fd2, root[fd1]->hash, 20);
@@ -239,6 +248,9 @@ int s_open (const char *pathname, int flags, mode_t mode)
 		printf("DNE InFS\n");
 		root[fd1] = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
 		memset(root[fd1]->hash, 0, 64);
+		root[fd1] -> leftChild = NULL;
+		root[fd1] -> rightChild = NULL;
+
 		//Step 3: if file DNE, create entry in secure.txt
 		char fn[32];
 		memset(fn, 0, 32);
@@ -253,6 +265,7 @@ int s_open (const char *pathname, int flags, mode_t mode)
 		write(fd2, root[fd1]->hash, 20);
 		return fd1;
 	}
+	assert(1==0);
 	return -1;//SHOULD NOT REACH HERE
 }
 
@@ -266,6 +279,7 @@ int s_open (const char *pathname, int flags, mode_t mode)
  */
 int s_lseek (int fd, long offset, int whence)
 {
+	assert(1==0);
 	assert(fd<100);
 	assert (filesys_inited);
 	int ret = lseek (fd, offset, whence);
@@ -282,22 +296,22 @@ int s_lseek (int fd, long offset, int whence)
  */
 ssize_t s_write (int fd, const void *buf, size_t count)
 {
-	// int position = lseek(fd, 0, SEEK_CUR);
-	// printf("current position: %d\n", position);
-	// printf("s_write(%d, %s, %zd)\n", fd, buf, count);
 	assert(fd<100);
 	assert (filesys_inited);
 
-	//pehli baar write karega, toh create merkle tree rooyegi 
-	// struct merkleNode* blah = createMerkleTree(fd);
-	// if(!hashSame(blah->hash, root[fd]->hash)) 
-	// 	return -1;
+	struct merkleNode* blah = createMerkleTree(fd);
+	if(!hashSame(blah->hash, root[fd]->hash)){
+		printHash(blah->hash);
+		printHash(root[fd]->hash);
+		// printHash(checkSecure(fd));
+		return -1;
+	}
 
 	int ret = write (fd, buf, count);//CHECK OUTPUT MAYBE
 	root[fd] = createMerkleTree(fd);
 	// merkleTreeTraverse(fd);
 
-	//CHANGE SECURE.TXT
+	// CHANGE SECURE.TXT
 	assert(updateSecure(fd)==1);
 
 	return ret;
@@ -309,15 +323,16 @@ ssize_t s_write (int fd, const void *buf, size_t count)
  */
 ssize_t s_read (int fd, void *buf, size_t count)
 {
+	assert (filesys_inited);
 	assert(fd<100);
 	//Step 1: Compute the BLOCKS of the file that need to be read
-
 	//Step 2: Read the blocks
-
 	//Step 3: Check Integrity (if fail return -1)
 
+	struct merkleNode* blah = createMerkleTree(fd);
+	if(!hashSame(blah->hash, root[fd]->hash)) 
+		return -1;
 
-	assert (filesys_inited);
 	return read (fd, buf, count);
 }
 
@@ -345,11 +360,13 @@ int s_close (int fd)
  */
 int filesys_init (void)
 {
+	assert(filesys_inited == 0);
+
 	//if secure.txt does not exist, CREATE
 	int fd = open("secure.txt", O_CREAT|O_WRONLY, S_IRUSR|S_IWUSR);
 	assert(fd != -1);
 
-	// Check the integrity of all the files whos hashes exist in secure.txt
+	// Check the integrity of all the files whos hashes exist in secure.txt - no more
 
 	// if a file DNE, just throw away corresponding entry in secure.txt, (if entry exists)
 
