@@ -27,9 +27,8 @@ void get_sha1_hash (const void *buf, int len, const void *sha1)
 	SHA1 ((unsigned char*)buf, len, (unsigned char*)sha1);
 }
 
-struct merkleNode* createMerkleTree(int fd){
-	char* fName = fnames[fd];
-	fd = open (fName, O_RDONLY, 0);
+struct merkleNode* createMerkleTree(char* fName){
+	int fd = open (fName, O_RDONLY, 0);
 
 	int fileSize = lseek(fd, 0, SEEK_END);
 	char* buf = (char *) malloc(fileSize);
@@ -164,7 +163,7 @@ int s_open (const char *pathname, int flags, mode_t mode)
 	snprintf(fnames[fd], 32, "%s", pathname);
 	// printf("s_open adding fnames[%d]: %s\n", fd, fnames[fd]);
 
-	struct merkleNode* merkleRoot = createMerkleTree(fd);
+	struct merkleNode* merkleRoot = createMerkleTree(fnames[fd]);
 	char* secHash = getSecureHash(fd);
 
 	root[fd] = merkleRoot;
@@ -213,7 +212,7 @@ ssize_t s_write (int fd, const void *buf, size_t count)
 	assert (fd<100);
 	assert (filesys_inited);
 
-	struct merkleNode* merkleRoot = createMerkleTree(fd);
+	struct merkleNode* merkleRoot = createMerkleTree(fnames[fd]);
 	char* secHash = getSecureHash(fd);
 
 	assert (hashSame(secHash,root[fd]->hash));
@@ -229,8 +228,8 @@ ssize_t s_write (int fd, const void *buf, size_t count)
 	}
 
 	assert(write (fd, buf, count)==count);
-	root[fd] = createMerkleTree(fd);
-	assert (hashSame(root[fd]->hash,createMerkleTree(fd)->hash));
+	root[fd] = createMerkleTree(fnames[fd]);
+	assert (hashSame(root[fd]->hash,createMerkleTree(fnames[fd])->hash));
 	assert(updateSecure(fd)==1);
 
 	secHash = getSecureHash(fd);
@@ -251,7 +250,7 @@ ssize_t s_read (int fd, void *buf, size_t count)
 	//Step 2: Read the blocks
 	//Step 3: Check Integrity (if fail return -1)
 
-	struct merkleNode* merkleRoot = createMerkleTree(fd);
+	struct merkleNode* merkleRoot = createMerkleTree(fnames[fd]);
 
 	char* secHash = getSecureHash(fd);
 	assert (hashSame(secHash,root[fd]->hash));
@@ -286,18 +285,46 @@ int s_close (int fd)
  */
 int filesys_init (void)
 {
+	printf("filesys_init\n");
 	assert(filesys_inited == 0);
 
 	//if secure.txt does not exist, CREATE
-	int fd = open("secure.txt", O_CREAT|O_WRONLY, S_IRUSR|S_IWUSR);
-	assert(fd != -1);
+	system ("touch secure.txt");
+	system ("mv secure.txt secure_temp.txt");
+	int fdTo = open("secure.txt", O_CREAT|O_WRONLY, S_IRUSR|S_IWUSR);
+	int fdFrom = open("secure_temp.txt", O_RDONLY, S_IRUSR|S_IWUSR);
+	assert(fdTo != -1);
+	assert(fdFrom != -1);
 
-	// Check the integrity of all the files whos hashes exist in secure.txt - no more
+	int n, integrityLost = 0;
+	char secureBlock[52]; // 32 for fileName + 20 for Root Hash
+	while((n = read(fdFrom, secureBlock, sizeof(secureBlock))) > 0){
+		assert(n == 52);
+		
+		char filename[32];
+		char hash[20];
+		for(int i = 0; i < 32; i++) filename[i] = secureBlock[i];
+		for(int j = 0; j < 20; j++) hash[j] = secureBlock[j+32];
 
-	// if a file DNE, just throw away corresponding entry in secure.txt, (if entry exists)
-	//IMPORTANT, otherwise base would not run again
+		// if a file DNE, just throw away corresponding entry in 
+		//secure.txt, (if entry exists)
+		//IMPORTANT, otherwise base would not run again
+		if(access(filename, F_OK ) != -1){ //file exists
+			printf("%s seems to exist\n", filename);
+			assert(write(fdTo, secureBlock, 52)==52);
 
-	// if Integrity of an existing file is compromised, return 1
+			// Check the integrity of all the files whos hashes 
+			// exist in secure.txt
+			// if Integrity of an existing file is compromised, return 1
+			if(!(hashSame(hash,createMerkleTree(filename)->hash)))
+				integrityLost = 1;
+		}
+	}
+	close(fdFrom);
+	close(fdTo);
+	system ("rm secure_temp.txt");
+	if(integrityLost)
+		return 1; 
 
 	filesys_inited = 1;
 	return 0; //on success
