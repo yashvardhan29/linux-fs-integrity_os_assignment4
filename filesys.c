@@ -31,15 +31,21 @@ struct merkleNode* createMerkleTree(int fd){
 	char* fName = fnames[fd];
 	fd = open (fName, O_RDONLY, 0);
 
-	int end = lseek(fd, 0, SEEK_END);
-	char* buf = (char *)malloc(end);
+	int fileSize = lseek(fd, 0, SEEK_END);
+	char* buf = (char *) malloc(fileSize);
 	assert(lseek(fd,0,SEEK_SET)==0);
+
+	read(fd, buf, fileSize);
+
 	struct merkleNode* ret = (struct merkleNode*) malloc( sizeof(struct merkleNode) );
-	get_sha1_hash(buf,end,ret->hash);
+	get_sha1_hash(buf,fileSize,ret->hash);
+	// printf("Creating a merkle tree of file: %s with size: %d\n", fName,fileSize);
+
 	ret->leftChild = NULL;
 	ret->rightChild = NULL;
 
 	close(fd);
+
 	return ret;
 }
 
@@ -156,11 +162,10 @@ int s_open (const char *pathname, int flags, mode_t mode)
 	int fd = open(pathname, flags, mode);
 	fnames[fd] = (char *)malloc(32);
 	snprintf(fnames[fd], 32, "%s", pathname);
-	printf("s_open adding fnames[%d]: %s\n", fd, fnames[fd]);
+	// printf("s_open adding fnames[%d]: %s\n", fd, fnames[fd]);
 
 	struct merkleNode* merkleRoot = createMerkleTree(fd);
 	char* secHash = getSecureHash(fd);
-	assert(hashSame(secHash,root[fd]->hash));
 
 	root[fd] = merkleRoot;
 
@@ -188,7 +193,7 @@ int s_open (const char *pathname, int flags, mode_t mode)
  */
 int s_lseek (int fd, long offset, int whence)
 {
-	assert(1==0);
+	// assert(1==0);
 	assert(fd<100);
 	assert (filesys_inited);
 	int ret = lseek (fd, offset, whence);
@@ -216,6 +221,8 @@ ssize_t s_write (int fd, const void *buf, size_t count)
 
 	root[fd] = merkleRoot;
 
+	// printHash(secHash);
+	// printHash(merkleRoot->hash);
 	if(!hashSame(secHash,merkleRoot->hash)){
 		for(int x=0; x<20; x++) root[fd]->hash[x] = secHash[x];
 		return -1;
@@ -223,7 +230,11 @@ ssize_t s_write (int fd, const void *buf, size_t count)
 
 	assert(write (fd, buf, count)==count);
 	root[fd] = createMerkleTree(fd);
+	assert (hashSame(root[fd]->hash,createMerkleTree(fd)->hash));
 	assert(updateSecure(fd)==1);
+
+	secHash = getSecureHash(fd);
+	assert (hashSame(secHash,root[fd]->hash));
 
 	return count;
 }
@@ -284,6 +295,7 @@ int filesys_init (void)
 	// Check the integrity of all the files whos hashes exist in secure.txt - no more
 
 	// if a file DNE, just throw away corresponding entry in secure.txt, (if entry exists)
+	//IMPORTANT, otherwise base would not run again
 
 	// if Integrity of an existing file is compromised, return 1
 
