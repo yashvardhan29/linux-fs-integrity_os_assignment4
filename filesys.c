@@ -285,11 +285,9 @@ int s_close (int fd)
  */
 int filesys_init (void)
 {
-	printf("filesys_init\n");
 	assert(filesys_inited == 0);
 
-	//if secure.txt does not exist, CREATE
-	system ("touch secure.txt");
+	system ("touch secure.txt"); //if secure.txt does not exist, CREATE
 	system ("mv secure.txt secure_temp.txt");
 	int fdTo = open("secure.txt", O_CREAT|O_WRONLY, S_IRUSR|S_IWUSR);
 	int fdFrom = open("secure_temp.txt", O_RDONLY, S_IRUSR|S_IWUSR);
@@ -306,16 +304,11 @@ int filesys_init (void)
 		for(int i = 0; i < 32; i++) filename[i] = secureBlock[i];
 		for(int j = 0; j < 20; j++) hash[j] = secureBlock[j+32];
 
-		// if a file DNE, just throw away corresponding entry in 
-		//secure.txt, (if entry exists)
-		//IMPORTANT, otherwise base would not run again
-		if(access(filename, F_OK ) != -1){ //file exists
-			printf("%s seems to exist\n", filename);
+		//only keep those entries in secure.txt, who's file exists
+		if(access(filename, F_OK ) != -1){
 			assert(write(fdTo, secureBlock, 52)==52);
 
-			// Check the integrity of all the files whos hashes 
-			// exist in secure.txt
-			// if Integrity of an existing file is compromised, return 1
+			//file exists, but it has a different hash, than the one in secure.txt
 			if(!(hashSame(hash,createMerkleTree(filename)->hash)))
 				integrityLost = 1;
 		}
