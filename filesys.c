@@ -16,6 +16,7 @@ struct merkleNode{
 };
 
 static struct merkleNode* root[100]; //assuming fd lies in [0,99]
+static int secureFSize[100];
 static char* fnames[100];
 static int filesys_inited = 0;
 
@@ -146,6 +147,14 @@ int appendSecure(int fd){
 	return 0;
 }
 
+void s_updateSize(int fd){
+	int currentPosition = lseek(fd, 0, SEEK_CUR);
+
+	secureFSize[fd] = lseek(fd, 0, SEEK_END);
+
+	lseek(fd, currentPosition, SEEK_SET);
+}
+
 /* Build an in-memory Merkle tree for the file.
  * Compare the integrity of file with respect to
  * root hash stored in secure.txt. If the file
@@ -179,6 +188,8 @@ int s_open (const char *pathname, int flags, mode_t mode)
 			return -1;
 		}
 	}
+
+	s_updateSize(fd);
 	return fd;
 }
 
@@ -192,12 +203,12 @@ int s_open (const char *pathname, int flags, mode_t mode)
  */
 int s_lseek (int fd, long offset, int whence)
 {
-	// assert(1==0);
 	assert(fd<100);
 	assert (filesys_inited);
-	int ret = lseek (fd, offset, whence);
-	printf("ret: %d\n", ret);
-	return ret;
+
+	if(whence==SEEK_END)
+		return secureFSize[fd];
+	return lseek (fd, offset, whence);
 }
 
 /* read the blocks that needs to be updated
@@ -235,6 +246,7 @@ ssize_t s_write (int fd, const void *buf, size_t count)
 	secHash = getSecureHash(fd);
 	assert (hashSame(secHash,root[fd]->hash));
 
+	s_updateSize(fd);
 	return count;
 }
 
