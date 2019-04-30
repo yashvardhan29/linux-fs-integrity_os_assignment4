@@ -32,7 +32,7 @@ int main_loop (char *filename)
 		}
 		ret = s_write (fd1, buf, size);
 		if (ret != size) {
-			printf ("SWRITE Unable to write to file\n");
+			printf ("SWRITE Unable to write to file, ret=%d, size=%d\n",ret,size);
 			return 0;
 		}
 		total_size -= size;

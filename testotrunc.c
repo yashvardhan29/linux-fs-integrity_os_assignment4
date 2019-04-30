@@ -8,4 +8,6 @@
 int main(){
 	int x = O_WRONLY | O_CREAT | O_TRUNC;
 	printf("%d\n", x&O_TRUNC);
+	if(x & O_TRUNC)
+		printf("yes\n");
 }
